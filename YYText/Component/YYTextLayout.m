@@ -700,7 +700,7 @@ dispatch_semaphore_signal(_lock);
                         if ([uiFont.fontName isEqualToString:@".SFUI-Regular"]) {
                             font = (__bridge CFTypeRef _Nullable)(@"TimesNewRomanPSMT");
                         } else {
-                            font =  ((__bridge CFStringRef)uiFont.fontName, uiFont.pointSize, NULL);
+                            font = CTFontCreateWithName((__bridge CFStringRef)uiFont.fontName, uiFont.pointSize, NULL);
                         }
                     } else {
                         font = NULL;
