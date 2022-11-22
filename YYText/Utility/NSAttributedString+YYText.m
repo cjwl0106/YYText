@@ -647,11 +647,15 @@ return style. _attr_;
     YYTextRunDelegate *delegate = [YYTextRunDelegate new];
     delegate.ascent = ascent;
     delegate.descent = descent;
-    delegate.width = bounding.size.width + 2 * bounding.origin.x;
+//    delegate.width = bounding.size.width + 2 * bounding.origin.x;
+    float width = 1.0 / [UIScreen mainScreen].scale;
+    delegate.width = bounding.size.width + 7 + width * 2;
     
     YYTextAttachment *attachment = [YYTextAttachment new];
     attachment.contentMode = UIViewContentModeScaleAspectFit;
-    attachment.contentInsets = UIEdgeInsetsMake(ascent - (bounding.size.height + bounding.origin.y), bounding.origin.x, descent + bounding.origin.y, bounding.origin.x);
+//    attachment.contentInsets = UIEdgeInsetsMake(ascent - (bounding.size.height + bounding.origin.y), bounding.origin.x, descent + bounding.origin.y, bounding.origin.x);
+    attachment.contentInsets = UIEdgeInsetsMake(-2, -2, -2, -2);
+
     if (hasAnim) {
         Class imageClass = NSClassFromString(@"YYAnimatedImageView");
         if (!imageClass) imageClass = [UIImageView class];

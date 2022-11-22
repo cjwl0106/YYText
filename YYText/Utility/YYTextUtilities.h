@@ -183,7 +183,10 @@ static inline CGFloat YYTextEmojiGetAscentWithFontSize(CGFloat fontSize) {
     if (fontSize < 16) {
         return 1.25 * fontSize;
     } else if (16 <= fontSize && fontSize <= 24) {
-        return 0.5 * fontSize + 12;
+//        return 0.5 * fontSize + 12;
+
+        return 0.5 * fontSize + 6.5;
+//        return 15;
     } else {
         return fontSize;
     }
@@ -200,7 +203,10 @@ static inline CGFloat YYTextEmojiGetDescentWithFontSize(CGFloat fontSize) {
     if (fontSize < 16) {
         return 0.390625 * fontSize;
     } else if (16 <= fontSize && fontSize <= 24) {
-        return 0.15625 * fontSize + 3.75;
+//        return 0.15625 * fontSize + 3.75;
+
+        return 0.15625 * fontSize + 1.35;
+//        return 4;
     } else {
         return 0.3125 * fontSize;
     }
@@ -227,7 +233,6 @@ static inline CGRect YYTextEmojiGetGlyphBoundingRectWithFontSize(CGFloat fontSiz
     }
     return rect;
 }
-
 
 /**
  Get the character set which should rotate in vertical form.
