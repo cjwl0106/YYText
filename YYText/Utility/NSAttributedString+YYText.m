@@ -21,38 +21,6 @@
 @interface NSAttributedString_YYText : NSObject @end
 @implementation NSAttributedString_YYText @end
 
-
-static double _YYDeviceSystemVersion() {
-    static double version;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        version = [UIDevice currentDevice].systemVersion.doubleValue;
-    });
-    return version;
-}
-
-#ifndef kSystemVersion
-#define kSystemVersion _YYDeviceSystemVersion()
-#endif
-
-#ifndef kiOS6Later
-#define kiOS6Later (kSystemVersion >= 6)
-#endif
-
-#ifndef kiOS7Later
-#define kiOS7Later (kSystemVersion >= 7)
-#endif
-
-#ifndef kiOS8Later
-#define kiOS8Later (kSystemVersion >= 8)
-#endif
-
-#ifndef kiOS9Later
-#define kiOS9Later (kSystemVersion >= 9)
-#endif
-
-
-
 @implementation NSAttributedString (YYText)
 
 - (NSData *)yy_archiveToData {
@@ -109,21 +77,6 @@ static double _YYDeviceSystemVersion() {
      We use UIFont for both CoreText and UIKit.
      */
     UIFont *font = [self yy_attribute:NSFontAttributeName atIndex:index];
-    if (kSystemVersion <= 6) {
-        if (font) {
-            if (CFGetTypeID((__bridge CFTypeRef)(font)) == CTFontGetTypeID()) {
-                CTFontRef CTFont = (__bridge CTFontRef)(font);
-                CFStringRef name = CTFontCopyPostScriptName(CTFont);
-                CGFloat size = CTFontGetSize(CTFont);
-                if (!name) {
-                    font = nil;
-                } else {
-                    font = [UIFont fontWithName:(__bridge NSString *)(name) size:size];
-                    CFRelease(name);
-                }
-            }
-        }
-    }
     return font;
 }
 
@@ -206,10 +159,7 @@ static double _YYDeviceSystemVersion() {
 }
 
 - (UIColor *)yy_strikethroughColorAtIndex:(NSUInteger)index {
-    if (kSystemVersion >= 7) {
-        return [self yy_attribute:NSStrikethroughColorAttributeName atIndex:index];
-    }
-    return nil;
+    return [self yy_attribute:NSStrikethroughColorAttributeName atIndex:index];
 }
 
 - (NSUnderlineStyle)yy_underlineStyle {
@@ -226,10 +176,7 @@ static double _YYDeviceSystemVersion() {
 }
 
 - (UIColor *)yy_underlineColorAtIndex:(NSUInteger)index {
-    UIColor *color = nil;
-    if (kSystemVersion >= 7) {
-        color = [self yy_attribute:NSUnderlineColorAttributeName atIndex:index];
-    }
+    UIColor *color = [self yy_attribute:NSUnderlineColorAttributeName atIndex:index];
     if (!color) {
         CGColorRef ref = (__bridge CGColorRef)([self yy_attribute:(NSString *)kCTUnderlineColorAttributeName atIndex:index]);
         color = [UIColor colorWithCGColor:ref];
@@ -250,10 +197,7 @@ static double _YYDeviceSystemVersion() {
 }
 
 - (NSString *)yy_textEffectAtIndex:(NSUInteger)index {
-    if (kSystemVersion >= 7) {
-        return [self yy_attribute:NSTextEffectAttributeName atIndex:index];
-    }
-    return nil;
+    return [self yy_attribute:NSTextEffectAttributeName atIndex:index];
 }
 
 - (NSNumber *)yy_obliqueness {
@@ -261,10 +205,7 @@ static double _YYDeviceSystemVersion() {
 }
 
 - (NSNumber *)yy_obliquenessAtIndex:(NSUInteger)index {
-    if (kSystemVersion >= 7) {
-        return [self yy_attribute:NSObliquenessAttributeName atIndex:index];
-    }
-    return nil;
+    return [self yy_attribute:NSObliquenessAttributeName atIndex:index];
 }
 
 - (NSNumber *)yy_expansion {
@@ -272,10 +213,7 @@ static double _YYDeviceSystemVersion() {
 }
 
 - (NSNumber *)yy_expansionAtIndex:(NSUInteger)index {
-    if (kSystemVersion >= 7) {
-        return [self yy_attribute:NSExpansionAttributeName atIndex:index];
-    }
-    return nil;
+    return [self yy_attribute:NSExpansionAttributeName atIndex:index];
 }
 
 - (NSNumber *)yy_baselineOffset {
@@ -283,10 +221,7 @@ static double _YYDeviceSystemVersion() {
 }
 
 - (NSNumber *)yy_baselineOffsetAtIndex:(NSUInteger)index {
-    if (kSystemVersion >= 7) {
-        return [self yy_attribute:NSBaselineOffsetAttributeName atIndex:index];
-    }
-    return nil;
+    return [self yy_attribute:NSBaselineOffsetAttributeName atIndex:index];
 }
 
 - (BOOL)yy_verticalGlyphForm {
@@ -303,10 +238,7 @@ static double _YYDeviceSystemVersion() {
 }
 
 - (NSString *)yy_languageAtIndex:(NSUInteger)index {
-    if (kSystemVersion >= 7) {
-        return [self yy_attribute:(id)kCTLanguageAttributeName atIndex:index];
-    }
-    return nil;
+    return [self yy_attribute:(id)kCTLanguageAttributeName atIndex:index];
 }
 
 - (NSArray *)yy_writingDirection {
@@ -402,12 +334,10 @@ return style. _attr_;
 }
 
 - (CGFloat)yy_defaultTabInterval {
-    if (!kiOS7Later) return 0;
     ParagraphAttribute(defaultTabInterval);
 }
 
 - (NSArray *)yy_tabStops {
-    if (!kiOS7Later) return nil;
     ParagraphAttribute(tabStops);
 }
 
@@ -464,12 +394,10 @@ return style. _attr_;
 }
 
 - (CGFloat)yy_defaultTabIntervalAtIndex:(NSUInteger)index {
-    if (!kiOS7Later) return 0;
     ParagraphAttributeAtIndex(defaultTabInterval);
 }
 
 - (NSArray *)yy_tabStopsAtIndex:(NSUInteger)index {
-    if (!kiOS7Later) return nil;
     ParagraphAttributeAtIndex(tabStops);
 }
 
@@ -521,7 +449,7 @@ return style. _attr_;
 }
 
 - (YYTextBorder *)yy_textBackgroundBorderAtIndex:(NSUInteger)index {
-    return [self yy_attribute:YYTextBackedStringAttributeName atIndex:index];
+    return [self yy_attribute:YYTextBackgroundBorderAttributeName atIndex:index];
 }
 
 - (CGAffineTransform)yy_textGlyphTransform {
@@ -708,17 +636,12 @@ return style. _attr_;
     dispatch_once(&onceToken, ^{
         failSet = [NSMutableSet new];
         [failSet addObject:(id)kCTGlyphInfoAttributeName];
-        [failSet addObject:(id)kCTCharacterShapeAttributeName];
-        if (kiOS7Later) {
-            [failSet addObject:(id)kCTLanguageAttributeName];
-        }
+        [failSet addObject:(id)kCTLanguageAttributeName];
         [failSet addObject:(id)kCTRunDelegateAttributeName];
         [failSet addObject:(id)kCTBaselineClassAttributeName];
         [failSet addObject:(id)kCTBaselineInfoAttributeName];
         [failSet addObject:(id)kCTBaselineReferenceInfoAttributeName];
-        if (kiOS8Later) {
-            [failSet addObject:(id)kCTRubyAnnotationAttributeName];
-        }
+        [failSet addObject:(id)kCTRubyAnnotationAttributeName];
         [failSet addObject:YYTextShadowAttributeName];
         [failSet addObject:YYTextInnerShadowAttributeName];
         [failSet addObject:YYTextUnderlineAttributeName];
@@ -738,14 +661,11 @@ return style. _attr_;
         for (NSString *str in attrs.allKeys) {
             if ([failSet containsObject:str]) Fail;
         }
-        if (!kiOS7Later) {
-            UIFont *font = attrs[NSFontAttributeName];
-            if (CFGetTypeID((__bridge CFTypeRef)(font)) == CTFontGetTypeID()) Fail;
-        }
+        UIFont *font = attrs[NSFontAttributeName];
+        if (CFGetTypeID((__bridge CFTypeRef)(font)) == CTFontGetTypeID()) Fail;
         if (attrs[(id)kCTForegroundColorAttributeName] && !attrs[NSForegroundColorAttributeName]) Fail;
         if (attrs[(id)kCTStrokeColorAttributeName] && !attrs[NSStrokeColorAttributeName]) Fail;
         if (attrs[(id)kCTUnderlineColorAttributeName]) {
-            if (!kiOS7Later) Fail;
             if (!attrs[NSUnderlineColorAttributeName]) Fail;
         }
         NSParagraphStyle *style = attrs[NSParagraphStyleAttributeName];
@@ -1019,9 +939,7 @@ return style. _attr_;
 }
 
 - (void)yy_setStrikethroughColor:(UIColor *)strikethroughColor range:(NSRange)range {
-    if (kSystemVersion >= 7) {
-        [self yy_setAttribute:NSStrikethroughColorAttributeName value:strikethroughColor range:range];
-    }
+    [self yy_setAttribute:NSStrikethroughColorAttributeName value:strikethroughColor range:range];
 }
 
 - (void)yy_setUnderlineStyle:(NSUnderlineStyle)underlineStyle range:(NSRange)range {
@@ -1031,9 +949,7 @@ return style. _attr_;
 
 - (void)yy_setUnderlineColor:(UIColor *)underlineColor range:(NSRange)range {
     [self yy_setAttribute:(id)kCTUnderlineColorAttributeName value:(id)underlineColor.CGColor range:range];
-    if (kSystemVersion >= 7) {
-        [self yy_setAttribute:NSUnderlineColorAttributeName value:underlineColor range:range];
-    }
+    [self yy_setAttribute:NSUnderlineColorAttributeName value:underlineColor range:range];
 }
 
 - (void)yy_setLigature:(NSNumber *)ligature range:(NSRange)range {
@@ -1041,25 +957,21 @@ return style. _attr_;
 }
 
 - (void)yy_setTextEffect:(NSString *)textEffect range:(NSRange)range {
-    if (kSystemVersion >= 7) {
-        [self yy_setAttribute:NSTextEffectAttributeName value:textEffect range:range];
-    }
+    [self yy_setAttribute:NSTextEffectAttributeName value:textEffect range:range];
 }
 
 - (void)yy_setObliqueness:(NSNumber *)obliqueness range:(NSRange)range {
-    if (kSystemVersion >= 7) {
-        [self yy_setAttribute:NSObliquenessAttributeName value:obliqueness range:range];
-    }
+    [self yy_setAttribute:NSObliquenessAttributeName value:obliqueness range:range];
 }
 
 - (void)yy_setExpansion:(NSNumber *)expansion range:(NSRange)range {
-    if (kSystemVersion >= 7) {
-        [self yy_setAttribute:NSExpansionAttributeName value:expansion range:range];
-    }
+    [self yy_setAttribute:NSExpansionAttributeName value:expansion range:range];
 }
 
 - (void)yy_setBaselineOffset:(NSNumber *)baselineOffset range:(NSRange)range {
-    if (kSystemVersion >= 7) {
+    if (@available(iOS 11.0, *)) {
+        [self yy_setAttribute:(__bridge NSString *)kCTBaselineOffsetAttributeName value:baselineOffset range:range];
+    } else {
         [self yy_setAttribute:NSBaselineOffsetAttributeName value:baselineOffset range:range];
     }
 }
@@ -1070,9 +982,7 @@ return style. _attr_;
 }
 
 - (void)yy_setLanguage:(NSString *)language range:(NSRange)range {
-    if (kSystemVersion >= 7) {
-        [self yy_setAttribute:(id)kCTLanguageAttributeName value:language range:range];
-    }
+    [self yy_setAttribute:(id)kCTLanguageAttributeName value:language range:range];
 }
 
 - (void)yy_setWritingDirection:(NSArray *)writingDirection range:(NSRange)range {
@@ -1168,12 +1078,10 @@ return style. _attr_;
 }
 
 - (void)yy_setDefaultTabInterval:(CGFloat)defaultTabInterval range:(NSRange)range {
-    if (!kiOS7Later) return;
     ParagraphStyleSet(defaultTabInterval);
 }
 
 - (void)yy_setTabStops:(NSArray *)tabStops range:(NSRange)range {
-    if (!kiOS7Later) return;
     ParagraphStyleSet(tabStops);
 }
 
@@ -1188,10 +1096,6 @@ return style. _attr_;
 
 - (void)yy_setGlyphInfo:(CTGlyphInfoRef)glyphInfo range:(NSRange)range {
     [self yy_setAttribute:(id)kCTGlyphInfoAttributeName value:(__bridge id)glyphInfo range:range];
-}
-
-- (void)yy_setCharacterShape:(NSNumber *)characterShape range:(NSRange)range {
-    [self yy_setAttribute:(id)kCTCharacterShapeAttributeName value:characterShape range:range];
 }
 
 - (void)yy_setRunDelegate:(CTRunDelegateRef)runDelegate range:(NSRange)range {
@@ -1211,21 +1115,15 @@ return style. _attr_;
 }
 
 - (void)yy_setRubyAnnotation:(CTRubyAnnotationRef)ruby range:(NSRange)range {
-    if (kSystemVersion >= 8) {
-        [self yy_setAttribute:(id)kCTRubyAnnotationAttributeName value:(__bridge id)ruby range:range];
-    }
+    [self yy_setAttribute:(id)kCTRubyAnnotationAttributeName value:(__bridge id)ruby range:range];
 }
 
 - (void)yy_setAttachment:(NSTextAttachment *)attachment range:(NSRange)range {
-    if (kSystemVersion >= 7) {
-        [self yy_setAttribute:NSAttachmentAttributeName value:attachment range:range];
-    }
+    [self yy_setAttribute:NSAttachmentAttributeName value:attachment range:range];
 }
 
 - (void)yy_setLink:(id)link range:(NSRange)range {
-    if (kSystemVersion >= 7) {
-        [self yy_setAttribute:NSLinkAttributeName value:link range:range];
-    }
+    [self yy_setAttribute:NSLinkAttributeName value:link range:range];
 }
 
 - (void)yy_setTextBackedString:(YYTextBackedString *)textBackedString range:(NSRange)range {
@@ -1273,11 +1171,9 @@ return style. _attr_;
 }
 
 - (void)yy_setTextRubyAnnotation:(YYTextRubyAnnotation *)ruby range:(NSRange)range {
-    if (kiOS8Later) {
-        CTRubyAnnotationRef rubyRef = [ruby CTRubyAnnotation];
-        [self yy_setRubyAnnotation:rubyRef range:range];
-        if (rubyRef) CFRelease(rubyRef);
-    }
+    CTRubyAnnotationRef rubyRef = [ruby CTRubyAnnotation];
+    [self yy_setRubyAnnotation:rubyRef range:range];
+    if (rubyRef) CFRelease(rubyRef);
 }
 
 - (void)yy_setTextGlyphTransform:(CGAffineTransform)textGlyphTransform range:(NSRange)range {
@@ -1334,51 +1230,6 @@ return style. _attr_;
     [self yy_removeDiscontinuousAttributesInRange:NSMakeRange(length, string.length)];
 }
 
-- (void)yy_setClearColorToJoinedEmoji {
-    NSString *str = self.string;
-    if (str.length < 8) return;
-    
-    // Most string do not contains the joined-emoji, test the joiner first.
-    BOOL containsJoiner = NO;
-    {
-        CFStringRef cfStr = (__bridge CFStringRef)str;
-        BOOL needFree = NO;
-        UniChar *chars = NULL;
-        chars = (void *)CFStringGetCharactersPtr(cfStr);
-        if (!chars) {
-            chars = malloc(str.length * sizeof(UniChar));
-            if (chars) {
-                needFree = YES;
-                CFStringGetCharacters(cfStr, CFRangeMake(0, str.length), chars);
-            }
-        }
-        if (!chars) { // fail to get unichar..
-            containsJoiner = YES;
-        } else {
-            for (int i = 0, max = (int)str.length; i < max; i++) {
-                if (chars[i] == 0x200D) { // 'ZERO WIDTH JOINER' (U+200D)
-                    containsJoiner = YES;
-                    break;
-                }
-            }
-            if (needFree) free(chars);
-        }
-    }
-    if (!containsJoiner) return;
-    
-    // NSRegularExpression is designed to be immutable and thread safe.
-    static NSRegularExpression *regex;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        regex = [NSRegularExpression regularExpressionWithPattern:@"((👨‍👩‍👧‍👦|👨‍👩‍👦‍👦|👨‍👩‍👧‍👧|👩‍👩‍👧‍👦|👩‍👩‍👦‍👦|👩‍👩‍👧‍👧|👨‍👨‍👧‍👦|👨‍👨‍👦‍👦|👨‍👨‍👧‍👧)+|(👨‍👩‍👧|👩‍👩‍👦|👩‍👩‍👧|👨‍👨‍👦|👨‍👨‍👧))" options:kNilOptions error:nil];
-    });
-    
-    UIColor *clear = [UIColor clearColor];
-    [regex enumerateMatchesInString:str options:kNilOptions range:NSMakeRange(0, str.length) usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
-        [self yy_setColor:clear range:result.range];
-    }];
-}
-
 - (void)yy_removeDiscontinuousAttributesInRange:(NSRange)range {
     NSArray *keys = [NSMutableAttributedString yy_allDiscontinuousAttributeKeys];
     for (NSString *key in keys) {
@@ -1395,12 +1246,8 @@ return style. _attr_;
                  YYTextBackedStringAttributeName,
                  YYTextBindingAttributeName,
                  YYTextAttachmentAttributeName].mutableCopy;
-        if (kiOS8Later) {
-            [keys addObject:(id)kCTRubyAnnotationAttributeName];
-        }
-        if (kiOS7Later) {
-            [keys addObject:NSAttachmentAttributeName];
-        }
+        [keys addObject:(id)kCTRubyAnnotationAttributeName];
+        [keys addObject:NSAttachmentAttributeName];
     });
     return keys;
 }

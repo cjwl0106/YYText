@@ -397,25 +397,16 @@ dispatch_semaphore_signal(_lock);
     container->_readonly = YES;
     maximumNumberOfRows = container.maximumNumberOfRows;
     
-    // CoreText bug when draw joined emoji since iOS 8.3.
-    // See -[NSMutableAttributedString setClearColorToJoinedEmoji] for more information.
-    static BOOL needFixJoinedEmojiBug = NO;
     // It may use larger constraint size when create CTFrame with
     // CTFramesetterCreateFrame in iOS 10.
     static BOOL needFixLayoutSizeBug = NO;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         double systemVersionDouble = [UIDevice currentDevice].systemVersion.doubleValue;
-        if (8.3 <= systemVersionDouble && systemVersionDouble < 9) {
-            needFixJoinedEmojiBug = YES;
-        }
         if (systemVersionDouble >= 10) {
             needFixLayoutSizeBug = YES;
         }
     });
-    if (needFixJoinedEmojiBug) {
-        [((NSMutableAttributedString *)text) yy_setClearColorToJoinedEmoji];
-    }
     
     layout = [[YYTextLayout alloc] _init];
     layout.text = text;
@@ -531,9 +522,8 @@ dispatch_semaphore_signal(_lock);
         
         if (constraintSizeIsExtended) {
             if (isVerticalForm) {
-                if (rect.origin.x + rect.size.width >
-                    constraintRectBeforeExtended.origin.x +
-                    constraintRectBeforeExtended.size.width) break;
+                /// ⚠️⚠️⚠️ LYH Support: fix vertical layout issue
+                if (!CGRectIntersectsRect(rect, constraintRectBeforeExtended)) break;
             } else {
                 if (rect.origin.y + rect.size.height >
                     constraintRectBeforeExtended.origin.y +
@@ -691,13 +681,15 @@ dispatch_semaphore_signal(_lock);
                 if (runCount > 0) {
                     CTRunRef run = CFArrayGetValueAtIndex(runs, runCount - 1);
                     attrs = (id)CTRunGetAttributes(run);
-                    attrs = attrs ? attrs.mutableCopy : [NSMutableArray new];
+                    /// ⚠️⚠️⚠️ LYH Support: fixed typo => NSMutableArray to NSMutableDictionary
+                    attrs = attrs ? attrs.mutableCopy : [NSMutableDictionary new];
                     [attrs removeObjectsForKeys:[NSMutableAttributedString yy_allDiscontinuousAttributeKeys]];
                     CTFontRef font = (__bridge CFTypeRef)attrs[(id)kCTFontAttributeName];
                     CGFloat fontSize = font ? CTFontGetSize(font) : 12.0;
                     UIFont *uiFont = [UIFont systemFontOfSize:fontSize * 0.9];
                     if (uiFont) {
-                        font = CTFontCreateWithName((__bridge CFStringRef)uiFont.fontName, uiFont.pointSize, NULL);
+                        /// ⚠️⚠️⚠️ LYH Support: fixed Xcode console log warning
+                        font = CTFontCreateWithFontDescriptor((__bridge CTFontDescriptorRef)uiFont.fontDescriptor, uiFont.pointSize, NULL);
                     } else {
                         font = NULL;
                     }
@@ -711,7 +703,7 @@ dispatch_semaphore_signal(_lock);
                         // ignore clear color
                         [attrs removeObjectForKey:(id)kCTForegroundColorAttributeName];
                     }
-                    if (!attrs) attrs = [NSMutableDictionary new];
+                    /// ⚠️⚠️⚠️ LYH Support: remove redundant code => if (!attrs) attrs = [NSMutableDictionary new];
                 }
                 truncationToken = [[NSAttributedString alloc] initWithString:YYTextTruncationToken attributes:attrs];
                 truncationTokenLine = CTLineCreateWithAttributedString((CFAttributedStringRef)truncationToken);
@@ -724,7 +716,22 @@ dispatch_semaphore_signal(_lock);
                     type = kCTLineTruncationMiddle;
                 }
                 NSMutableAttributedString *lastLineText = [text attributedSubstringFromRange:lastLine.range].mutableCopy;
-                [lastLineText appendAttributedString:truncationToken];
+                /// ⚠️⚠️⚠️ LYH Support: fix LineBreakMode is Head or middle:https://github.com/ibireme/YYText/issues/907
+                if (type == kCTLineTruncationStart) {
+                    NSMutableAttributedString *newLastLineText = [text attributedSubstringFromRange:(NSRange){text.length-lastLine.range.length, lastLine.range.length}].mutableCopy;
+                    [newLastLineText replaceCharactersInRange:NSMakeRange(0, 1) withAttributedString:truncationToken];
+                    lastLineText = newLastLineText;
+                } else if (type == kCTLineTruncationMiddle) {
+                    NSUInteger lastLineTextCount = lastLine.range.length;
+                    NSUInteger lastLineTextMiddleIndex = lastLineTextCount/2;
+                    NSMutableAttributedString *mutableTruncationToken = truncationToken.mutableCopy;
+                    NSAttributedString *newLastLineEndText = [text attributedSubstringFromRange:(NSRange){text.length-lastLineTextMiddleIndex, lastLineTextMiddleIndex}];
+                    [mutableTruncationToken appendAttributedString:newLastLineEndText];
+                    [lastLineText replaceCharactersInRange:NSMakeRange(lastLineTextCount-mutableTruncationToken.length, mutableTruncationToken.length)
+                                      withAttributedString:mutableTruncationToken];
+                } else {
+                    [lastLineText appendAttributedString:truncationToken];
+                }
                 CTLineRef ctLastLineExtend = CTLineCreateWithAttributedString((CFAttributedStringRef)lastLineText);
                 if (ctLastLineExtend) {
                     CGFloat truncatedWidth = lastLine.width;
@@ -2228,7 +2235,9 @@ static void YYTextDrawRun(YYTextLine *line, CTRunRef run, CGContextRef context, 
         if (!runTextMatrixIsID) {
             CGContextSaveGState(context);
             CGAffineTransform trans = CGContextGetTextMatrix(context);
-            CGContextSetTextMatrix(context, CGAffineTransformConcat(trans, runTextMatrix));
+            /// ⚠️⚠️⚠️ LYH Support: https://github.com/ibireme/YYText/pull/698/commits/fbeeb11c056f8c1abb0abd104fa44c029479107e
+            /// CGContextSetTextMatrix(context, CGAffineTransformConcat(trans, runTextMatrix));
+            CGContextSetTextMatrix(context, CGAffineTransformConcat(runTextMatrix, trans));
         }
         CTRunDraw(run, context, CFRangeMake(0, 0));
         if (!runTextMatrixIsID) {
@@ -3101,7 +3110,11 @@ static void YYTextDrawInnerShadow(YYTextLayout *layout, CGContextRef context, CG
                 CGRect runImageBounds = CTRunGetImageBounds(run, context, CFRangeMake(0, 0));
                 runImageBounds.origin.x += runPosition.x;
                 if (runImageBounds.size.width < 0.1 || runImageBounds.size.height < 0.1) continue;
-                
+                /// ⚠️⚠️⚠️ LYH Support: fix loop in YYTextDrawInnerShadow()
+                if (runImageBounds.size.width < 0.1 || runImageBounds.size.height < 0.1) {
+                    shadow = shadow.subShadow;
+                    continue;
+                }
                 CFDictionaryRef runAttrs = CTRunGetAttributes(run);
                 NSValue *glyphTransformValue = CFDictionaryGetValue(runAttrs, (__bridge const void *)(YYTextGlyphTransformAttributeName));
                 if (glyphTransformValue) {
