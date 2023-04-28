@@ -1023,8 +1023,9 @@ static dispatch_queue_t YYLabelGetReleaseQueue() {
         container.size = YYTextContainerMaxSize;
         
         YYTextLayout *layout = [YYTextLayout layoutWithContainer:container text:_innerText];
-        UIEdgeInsets insets = self.textContainerInset;
-        return CGSizeMake(ceil(layout.textBoundingRect.size.width) + insets.left + insets.right, ceil(layout.textBoundingRect.size.height) + insets.top + insets.bottom);
+        return layout.textBoundingSize;
+//        UIEdgeInsets insets = self.textContainerInset;
+//        return CGSizeMake(ceil(layout.textBoundingRect.size.width) + insets.left + insets.right, ceil(layout.textBoundingRect.size.height) + insets.top + insets.bottom);
     }
     
     CGSize containerSize = _innerContainer.size;
@@ -1042,8 +1043,9 @@ static dispatch_queue_t YYLabelGetReleaseQueue() {
     container.size = containerSize;
     
     YYTextLayout *layout = [YYTextLayout layoutWithContainer:container text:_innerText];
-    UIEdgeInsets insets = self.textContainerInset;
-    return CGSizeMake(ceil(layout.textBoundingRect.size.width) + insets.left + insets.right, ceil(layout.textBoundingRect.size.height) + insets.top + insets.bottom);
+    return layout.textBoundingSize;
+//    UIEdgeInsets insets = self.textContainerInset;
+//    return CGSizeMake(ceil(layout.textBoundingRect.size.width) + insets.left + insets.right, ceil(layout.textBoundingRect.size.height) + insets.top + insets.bottom);
 }
 
 #pragma mark - YYTextDebugTarget
