@@ -605,11 +605,15 @@ typedef NS_ENUM(NSUInteger, YYTextMoveDirection) {
     if (self.isFirstResponder || _containerView.isFirstResponder) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.01 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             UIMenuController *menu = [UIMenuController sharedMenuController];
-            [menu setTargetRect:CGRectStandardize(rect) inView:self->_selectionView];
             [menu update];
             if (!self->_state.showingMenu || !menu.menuVisible) {
                 self->_state.showingMenu = YES;
-                [menu setMenuVisible:YES animated:YES];
+                if (@available(iOS 13.0, *)) {
+                    [menu showMenuFromView:self->_selectionView rect:CGRectStandardize(rect)];
+                } else {
+                    [menu setTargetRect:CGRectStandardize(rect) inView:self->_selectionView];
+                    [menu setMenuVisible:YES animated:YES];
+                }
             }
         });
     }
@@ -620,7 +624,11 @@ typedef NS_ENUM(NSUInteger, YYTextMoveDirection) {
     if (_state.showingMenu) {
         _state.showingMenu = NO;
         UIMenuController *menu = [UIMenuController sharedMenuController];
-        [menu setMenuVisible:NO animated:YES];
+        if (@available(iOS 13.0, *)) {
+            [menu hideMenu];
+        } else {
+            [menu setMenuVisible:NO animated:YES];
+        }
     }
     if (_containerView.isFirstResponder) {
         _state.ignoreFirstResponder = YES;
