@@ -14,57 +14,54 @@
 #import "YYTextUtilities.h"
 #import "UIView+YYText.h"
 
+static YYTextEffectWindow *one = nil;
+static dispatch_once_t onceToken;
 
 @implementation YYTextEffectWindow
 
 + (instancetype)sharedWindow {
-    static YYTextEffectWindow *one = nil;
-    if (one == nil) {
-        // iOS 9 compatible
-        NSString *mode = [NSRunLoop currentRunLoop].currentMode;
-        if (mode.length == 27 &&
-            [mode hasPrefix:@"UI"] &&
-            [mode hasSuffix:@"InitializationRunLoopMode"]) {
-            return nil;
-        }
-    }
-    
-    static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        if (!YYTextIsAppExtension()) {
-            one = [self new];
-            one.frame = (CGRect){.size = YYTextScreenSize()};
-            one.userInteractionEnabled = NO;
-            one.windowLevel = UIWindowLevelStatusBar + 1;
-            one.hidden = NO;
-            
-            // for iOS 9:
-            one.opaque = NO;
-            one.backgroundColor = [UIColor clearColor];
-            one.layer.backgroundColor = [UIColor clearColor].CGColor;
-        }
+        one = [[YYTextEffectWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     });
     return one;
 }
 
-// stop self from becoming the KeyWindow
-- (void)becomeKeyWindow {
-    [[YYTextSharedApplication().delegate window] makeKeyWindow];
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.rootViewController = [UIViewController new];
+        self.rootViewController.view.hidden = YES;//隐藏view，防止影响点击穿透
+        
+        #if defined(__IPHONE_13_0) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0)
+            if (@available(iOS 13.0, *)) {
+                for (UIWindowScene* windowScene in [UIApplication sharedApplication].connectedScenes){
+                    if (windowScene.activationState == UISceneActivationStateForegroundActive){
+                        self.windowScene = windowScene;
+                        break;
+                    }
+                }
+            }
+        #endif
+        
+        self.userInteractionEnabled = NO;
+        self.windowLevel = UIWindowLevelAlert;
+        self.hidden = YES;
+        
+        // for iOS 9:
+        self.opaque = NO;
+        self.backgroundColor = [UIColor clearColor];
+        self.layer.backgroundColor = [UIColor clearColor].CGColor;
+    }
+    return self;
 }
 
-- (UIViewController *)rootViewController {
-    for (UIWindow *window in [YYTextSharedApplication() windows]) {
-        if (self == window) continue;
-        if (window.hidden) continue;
-        UIViewController *topViewController = window.rootViewController;
-        if (topViewController) return topViewController;
-    }
-    UIViewController *viewController = [super rootViewController];
-    if (!viewController) {
-        viewController = [UIViewController new];
-        [super setRootViewController:viewController];
-    }
-    return viewController;
+- (void)hideWindow {
+    self.hidden = YES;
+}
+
+- (void)showWindow {
+    self.hidden = NO;
 }
 
 // Bring self to front
@@ -327,6 +324,8 @@
     } completion:^(BOOL finished) {
         
     }];
+    
+    [self showWindow];
 }
 
 - (void)moveMagnifier:(YYTextMagnifier *)mag {
@@ -347,35 +346,36 @@
 }
 
 - (void)hideMagnifier:(YYTextMagnifier *)mag {
-    if (!mag) return;
-    if (mag.superview != self) return;
-    CGFloat rotation = [self _updateMagnifier:mag];
-    CGPoint center = [self yy_convertPoint:mag.hostPopoverCenter fromViewOrWindow:mag.hostView];
-    NSTimeInterval time = mag.type == YYTextMagnifierTypeCaret ? 0.20 : 0.15;
-    [UIView animateWithDuration:time delay:0 options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState animations:^{
-        
-        CGAffineTransform trans = CGAffineTransformMakeRotation(rotation);
-        trans = CGAffineTransformScale(trans, 0.01, 0.01);
-        mag.transform = trans;
-        
-        if (mag.type == YYTextMagnifierTypeCaret) {
-            CGPoint newCenter = CGPointMake(0, -mag.fitSize.height / 2);
-            newCenter = CGPointApplyAffineTransform(newCenter, CGAffineTransformMakeRotation(rotation));
-            newCenter.x += center.x;
-            newCenter.y += center.y;
-            mag.center = [self _correctedCenter:newCenter forMagnifier:mag rotation:rotation];
-        } else {
-            mag.center = [self _correctedCenter:center forMagnifier:mag rotation:rotation];
-            mag.alpha = 0;
-        }
-        
-    } completion:^(BOOL finished) {
-        if (finished) {
-            [mag removeFromSuperview];
-            mag.transform = CGAffineTransformIdentity;
-            mag.alpha = 1;
-        }
-    }];
+    if (mag && mag.superview == self) {
+        CGFloat rotation = [self _updateMagnifier:mag];
+        CGPoint center = [self yy_convertPoint:mag.hostPopoverCenter fromViewOrWindow:mag.hostView];
+        NSTimeInterval time = mag.type == YYTextMagnifierTypeCaret ? 0.20 : 0.15;
+        [UIView animateWithDuration:time delay:0 options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState animations:^{
+            
+            CGAffineTransform trans = CGAffineTransformMakeRotation(rotation);
+            trans = CGAffineTransformScale(trans, 0.01, 0.01);
+            mag.transform = trans;
+            
+            if (mag.type == YYTextMagnifierTypeCaret) {
+                CGPoint newCenter = CGPointMake(0, -mag.fitSize.height / 2);
+                newCenter = CGPointApplyAffineTransform(newCenter, CGAffineTransformMakeRotation(rotation));
+                newCenter.x += center.x;
+                newCenter.y += center.y;
+                mag.center = [self _correctedCenter:newCenter forMagnifier:mag rotation:rotation];
+            } else {
+                mag.center = [self _correctedCenter:center forMagnifier:mag rotation:rotation];
+                mag.alpha = 0;
+            }
+            
+        } completion:^(BOOL finished) {
+            if (finished) {
+                [mag removeFromSuperview];
+                mag.transform = CGAffineTransformIdentity;
+                mag.alpha = 1;
+            }
+        }];
+    }
+    [self hideWindow];
 }
 
 - (void)_updateSelectionGrabberDot:(YYSelectionGrabberDot *)dot selection:(YYTextSelectionView *)selection{
@@ -418,12 +418,15 @@
     [self insertSubview:selection.endGrabber.dot.mirror atIndex:0];
     [self _updateSelectionGrabberDot:selection.startGrabber.dot selection:selection];
     [self _updateSelectionGrabberDot:selection.endGrabber.dot selection:selection];
+    [self showWindow];
 }
 
 - (void)hideSelectionDot:(YYTextSelectionView *)selection {
-    if (!selection) return;
-    [selection.startGrabber.dot.mirror removeFromSuperview];
-    [selection.endGrabber.dot.mirror removeFromSuperview];
+    if (selection) {
+        [selection.startGrabber.dot.mirror removeFromSuperview];
+        [selection.endGrabber.dot.mirror removeFromSuperview];
+    }
+    [self hideWindow];
 }
 
 @end
