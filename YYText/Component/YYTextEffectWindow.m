@@ -30,8 +30,10 @@ static dispatch_once_t onceToken;
 {
     self = [super initWithFrame:frame];
     if (self) {
-        self.rootViewController = [UIViewController new];
-        self.rootViewController.view.hidden = YES;//隐藏view，防止影响点击穿透
+        // UIWindow 需要一个 rootViewController 来管理和响应设备方向的改变（适配pad横竖屏）
+        UIViewController *rootViewController = [[UIViewController alloc] init];
+        rootViewController.view.backgroundColor = [UIColor clearColor];
+        self.rootViewController = rootViewController;
         
         #if defined(__IPHONE_13_0) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0)
             if (@available(iOS 13.0, *)) {
@@ -54,6 +56,11 @@ static dispatch_once_t onceToken;
         self.layer.backgroundColor = [UIColor clearColor].CGColor;
     }
     return self;
+}
+
+// stop self from becoming the KeyWindow
+- (void)becomeKeyWindow {
+    [[YYTextSharedApplication().delegate window] makeKeyWindow];
 }
 
 - (void)hideWindow {
@@ -378,6 +385,17 @@ static dispatch_once_t onceToken;
     [self hideWindow];
 }
 
+- (BOOL)hasMagnifierInView {
+    if (self.subviews && self.subviews.count > 0) {
+        for (UIView *subV in self.subviews) {
+            if ([subV isKindOfClass:YYTextMagnifier.class]) {
+                return YES;
+            }
+        }
+    }
+    return NO;
+}
+
 - (void)_updateSelectionGrabberDot:(YYSelectionGrabberDot *)dot selection:(YYTextSelectionView *)selection{
     dot.mirror.hidden = YES;
     if (selection.hostView.clipsToBounds == YES && dot.yy_visibleAlpha > 0.1) {
@@ -412,7 +430,7 @@ static dispatch_once_t onceToken;
 }
 
 - (void)showSelectionDot:(YYTextSelectionView *)selection {
-    if (!selection) return;
+    if (!selection || !selection.selectionRects || selection.selectionRects.count <= 0) return;
     [self _updateWindowLevel];
     [self insertSubview:selection.startGrabber.dot.mirror atIndex:0];
     [self insertSubview:selection.endGrabber.dot.mirror atIndex:0];
@@ -421,12 +439,15 @@ static dispatch_once_t onceToken;
     [self showWindow];
 }
 
+// 选中dot会不停的重新计算位置，添加逻辑判断是否正在展示Magnifier视图，没有的话隐藏window
 - (void)hideSelectionDot:(YYTextSelectionView *)selection {
     if (selection) {
         [selection.startGrabber.dot.mirror removeFromSuperview];
         [selection.endGrabber.dot.mirror removeFromSuperview];
     }
-    [self hideWindow];
+    if (![self hasMagnifierInView]) {
+        [self hideWindow];
+    }
 }
 
 @end
