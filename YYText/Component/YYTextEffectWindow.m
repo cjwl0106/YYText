@@ -14,53 +14,47 @@
 #import "YYTextUtilities.h"
 #import "UIView+YYText.h"
 
-static YYTextEffectWindow *one = nil;
-static dispatch_once_t onceToken;
 
 @implementation YYTextEffectWindow
 
 + (instancetype)sharedWindow {
+    static YYTextEffectWindow *one = nil;
+    static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        one = [[YYTextEffectWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+        if (!YYTextIsAppExtension()) {
+            one = [self new];
+            one.frame = (CGRect){.size = YYTextScreenSize()};
+            one.userInteractionEnabled = NO;
+            one.windowLevel = UIWindowLevelStatusBar + 1;
+            one.hidden = NO;
+            
+            // for iOS 9:
+            one.opaque = NO;
+            one.backgroundColor = [UIColor clearColor];
+            one.layer.backgroundColor = [UIColor clearColor].CGColor;
+        }
     });
     return one;
-}
-
-- (instancetype)initWithFrame:(CGRect)frame
-{
-    self = [super initWithFrame:frame];
-    if (self) {
-        // UIWindow 需要一个 rootViewController 来管理和响应设备方向的改变（适配pad横竖屏）
-        UIViewController *rootViewController = [[UIViewController alloc] init];
-        rootViewController.view.backgroundColor = [UIColor clearColor];
-        self.rootViewController = rootViewController;
-        
-        #if defined(__IPHONE_13_0) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0)
-            if (@available(iOS 13.0, *)) {
-                for (UIWindowScene* windowScene in [UIApplication sharedApplication].connectedScenes){
-                    if (windowScene.activationState == UISceneActivationStateForegroundActive){
-                        self.windowScene = windowScene;
-                        break;
-                    }
-                }
-            }
-        #endif
-        
-        self.userInteractionEnabled = NO;
-        self.windowLevel = UIWindowLevelAlert;
-        self.hidden = YES;
-        
-        // for iOS 9:
-        self.opaque = NO;
-        self.backgroundColor = [UIColor clearColor];
-        self.layer.backgroundColor = [UIColor clearColor].CGColor;
-    }
-    return self;
 }
 
 // stop self from becoming the KeyWindow
 - (void)becomeKeyWindow {
     [[YYTextSharedApplication().delegate window] makeKeyWindow];
+}
+
+- (UIViewController *)rootViewController {
+    for (UIWindow *window in [YYTextSharedApplication() windows]) {
+        if (self == window) continue;
+        if (window.hidden) continue;
+        UIViewController *topViewController = window.rootViewController;
+        if (topViewController) return topViewController;
+    }
+    UIViewController *viewController = [super rootViewController];
+    if (!viewController) {
+        viewController = [UIViewController new];
+        [super setRootViewController:viewController];
+    }
+    return viewController;
 }
 
 - (void)hideWindow {
