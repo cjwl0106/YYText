@@ -604,7 +604,7 @@ static dispatch_queue_t YYLabelGetReleaseQueue() {
     
     if (_state.trackingTouch) {
         [self _endLongPressTimer];
-        if (!_state.touchMoved && _textTapAction && !_highlight) {
+        if (!_state.touchMoved && _textTapAction) {
             NSRange range = NSMakeRange(NSNotFound, 0);
             CGRect rect = CGRectNull;
             CGPoint point = [self _convertPointToLayout:_touchBeganPoint];
