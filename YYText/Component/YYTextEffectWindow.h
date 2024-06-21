@@ -47,6 +47,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// @param selection A selection view.
 - (void)hideSelectionDot:(YYTextSelectionView *)selection;
 
+// 获取当前的keyWindow
++ (UIWindow *)YYkeyWindow;
+
 @end
 
 NS_ASSUME_NONNULL_END
