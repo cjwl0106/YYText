@@ -3199,13 +3199,26 @@ typedef NS_ENUM(NSUInteger, YYTextMoveDirection) {
 - (void)deleteBackward {
     [self _updateIfNeeded];
     NSRange range = _selectedTextRange.asRange;
+    // ---------- 防御：钳位光标 ----------
+    if (range.location > _innerText.length) {
+        range.location = _innerText.length;
+        _selectedTextRange = [YYTextRange rangeWithRange:range];
+    }
+    // -----------------------------------
+    
     if (range.location == 0 && range.length == 0) return;
     _state.typingAttributesOnce = NO;
     
     // test if there's 'TextBinding' before the caret
     if (!_state.deleteConfirm && range.length == 0 && range.location > 0) {
         NSRange effectiveRange;
-        YYTextBinding *binding = [_innerText attribute:YYTextBindingAttributeName atIndex:range.location - 1 longestEffectiveRange:&effectiveRange inRange:NSMakeRange(0, _innerText.length)];
+        NSUInteger safeIdx = range.location ? range.location - 1 : 0;
+        if (safeIdx >= _innerText.length) safeIdx = _innerText.length - 1;
+        YYTextBinding *binding = [_innerText attribute:YYTextBindingAttributeName
+                                               atIndex:safeIdx
+                                 longestEffectiveRange:&effectiveRange
+                                               inRange:NSMakeRange(0, _innerText.length)];
+        
         if (binding && binding.deleteConfirm) {
             _state.deleteConfirm = YES;
             _selectedTextRange = [YYTextRange rangeWithRange:effectiveRange];
